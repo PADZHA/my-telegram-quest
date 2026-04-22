@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quest Bot Ultra</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #f0f2f5);
+            --text-color: var(--tg-theme-text-color, #222222);
+            --hint-color: var(--tg-theme-hint-color, #777777);
+            --primary-color: var(--tg-theme-button-color, #2481cc);
+            --primary-text-color: var(--tg-theme-button-text-color, #ffffff);
+            --sec-bg-color: var(--tg-theme-secondary-bg-color, #ffffff);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        /* Экраны */
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.5s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Заголовки и текст */
+        h1 { font-size: 2.2rem; margin-bottom: 10px; color: var(--primary-color); }
+        .description { font-size: 1.1rem; color: var(--hint-color); margin-bottom: 30px; line-height: 1.5; }
+        .instruction { font-size: 1.2rem; font-weight: bold; margin-bottom: 25px; }
+
+        /* Кнопки */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--primary-color);
+            color: var(--primary-text-color);
+            border: none;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.98); box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+        .btn-gas { background: linear-gradient(45deg, #ff416c, #ff4b2b); } /* Особая кнопка для ГАЗЗЗ */
+
+        /* Элементы вопроса */
+        .q-number { font-size: 0.9rem; color: var(--hint-color); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .q-text { font-size: 1.4rem; font-weight: 600; margin-bottom: 20px; min-height: 50px; }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            outline: none;
+            background-color: var(--sec-bg-color);
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { border-color: var(--primary-color); }
+
+        /* Таблица результатов */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .result-item {
+            background-color: var(--sec-bg-color);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+        .res-num { color: var(--hint-color); font-weight: bold; margin-right: 5px; }
+        .res-val { font-weight: 600; color: var(--primary-color); }
+
+        /* Финальный ввод кода */
+        .final-input-group { display: flex; gap: 5px; justify-content: center; margin-bottom: 20px; }
+        .code-letter {
+            width: 30px;
+            height: 40px;
+            font-size: 1.5rem;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+            color: #333;
+            font-family: monospace;
+        }
+        .code-letter.filled { border-color: var(--primary-color); background-color: #e1f5fe; }
+
+        /* Экран победы */
+        .win-icon { font-size: 5rem; margin-bottom: 20px; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div id="screenStart" class="screen active">
+        <h1>Йо! 👋</h1>
+        <div class="description">
+            Это непростой квест. Тебе предстоит ответить на 16 вопросов. Но это только начало... Готов проверить себя?
+        </div>
+        <button class="btn btn-gas" onclick="showScreen('screenInstruct')">ЛЕТС ГО, ГАЗЗЗ!</button>
+    </div>
+
+    <div id="screenInstruct" class="screen">
+        <div class="instruction">
+            Слушай внимательно! Сначала ты отвечаешь на все вопросы по порядку. В конце ты получишь список своих ответов. Тебе нужно будет взять из каждого ответа ПЕРВУЮ букву или цифру и составить финальный код. Удачи!
+        </div>
+        <button class="btn" onclick="startQuest()">Начинаем!</button>
+    </div>
+
+    <div id="screenQuest" class="screen">
+        <div class="q-number" id="qNumber">Вопрос 1 из 16</div>
+        <div class="q-text" id="qText">Текст вопроса?</div>
+        <input type="text" id="answerInput" placeholder="Твой ответ...">
+        <button class="btn" onclick="handleAnswer()">Ответить</button>
+    </div>
+
+    <div id="screenResults" class="screen">
+        <h1>Молодец! 🎉</h1>
+        <div class="description">Все вопросы позади. Вот твои ответы. Помнишь уговор? Первая буква/цифра каждого ответа по порядку!</div>
+        
+        <div class="results-grid" id="resultsGrid">
+            </div>
+
+        <button class="btn" onclick="showScreen('screenFinalInput')">Я готов ввести код!</button>
+    </div>
+
+    <div id="screenFinalInput" class="screen">
+        <h1>ФИНАЛ 🔥</h1>
+        <div class="description">Вводи код (первые символы твоих ответов):</div>
+        
+        <div class="final-input-group">
+            <input type="text" id="finalCodeInput" placeholder="16 символов" maxlength="16" style="font-family: monospace; text-align: center; letter-spacing: 3px; font-size: 1.2rem;">
+        </div>
+
+        <button class="btn" onclick="checkFinalCode()">ПРОВЕРИТЬ</button>
+    </div>
+
+    <div id="screenWin" class="screen">
+        <div class="win-icon">🏆</div>
+        <h1>ПОБЕДА!</h1>
+        <div class="description">Ты супер! Код верный. Твой приз (или просто респект) ждет тебя!</div>
+        <button class="btn" onclick="tg.close()">Закрыть</button>
+    </div>
+
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+
+    // --- НАСТРОЙКИ (ЗАПОЛНИТЕ ИХ!) ---
+    // Это тот код, который игрок должен составить из первых букв своих ответов.
+    // Убедитесь, что ответов 16 и код состоит из 16 первых символов этих ответов.
+    const SECRET_CODE = "1А4СВ2ОПРТН5ЕК8М"; // Пример кода (16 символов)
+
+    const QUESTIONS = [
+        { q: "С какого числа начинается каждый месяц?", a: "1" },
+        { q: "С какой буквы начинается алфавит?", a: "Алфавит" },
+        { q: "2 + 2 = ?", a: "4" },
+        { q: "Любимое слово Гагарина?", a: "Поехали" },
+        // ... ДОБАВЬТЕ ОСТАЛЬНЫЕ 12 ВОПРОСОВ ПО ОБРАЗЦУ НИЖЕ ...
+        { q: "Пример вопроса 5", a: "Слово" },
+        { q: "Пример вопроса 6", a: "Слово" },
+        { q: "Пример вопроса 7", a: "Слово" },
+        { q: "Пример вопроса 8", a: "Слово" },
+        { q: "Пример вопроса 9", a: "Слово" },
+        { q: "Пример вопроса 10", a: "Слово" },
+        { q: "Пример вопроса 11", a: "Слово" },
+        { q: "Пример вопроса 12", a: "Слово" },
+        { q: "Пример вопроса 13", a: "Слово" },
+        { q: "Пример вопроса 14", a: "Слово" },
+        { q: "Пример вопроса 15", a: "Слово" },
+        { q: "Пример вопроса 16", a: "Слово" },
+    ];
+    // ---------------------------------
+
+    let currentStep = 0;
+    let userAnswers = [];
+
+    // Переключение экранов
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        tg.HapticFeedback.impactOccurred('light');
+    }
+
+    // Старт квеста
+    function startQuest() {
+        currentStep = 0;
+        userAnswers = [];
+        showScreen('screenQuest');
+        renderQuestion();
+    }
+
+    // Отрисовка текущего вопроса
+    function renderQuestion() {
+        if (currentStep < QUESTIONS.length) {
+            document.getElementById('qNumber').innerText = `Вопрос ${currentStep + 1} из ${QUESTIONS.length}`;
+            document.getElementById('qText').innerText = QUESTIONS[currentStep].q;
+            document.getElementById('answerInput').value = "";
+            document.getElementById('answerInput').focus();
+        } else {
+            showResults();
+        }
+    }
+
+    // Логика ответа
+    function handleAnswer() {
+        const input = document.getElementById('answerInput');
+        const ans = input.value.trim();
+
+        if (ans === "") {
+            tg.HapticFeedback.notificationOccurred('warning');
+            return; // Не пускаем с пустым ответом
+        }
+
+        userAnswers.push(ans);
+        currentStep++;
+        tg.HapticFeedback.impactOccurred('medium');
+        renderQuestion();
+    }
+
+    // Показ результатов
+    function showResults() {
+        showScreen('screenResults');
+        tg.HapticFeedback.notificationOccurred('success');
+        const grid = document.getElementById('resultsGrid');
+        grid.innerHTML = ""; // Очистить
+
+        userAnswers.forEach((ans, index) => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML = `<span class="res-num">${index + 1}.</span> <span class="res-val">${ans}</span>`;
+            grid.appendChild(item);
+        });
+    }
+
+    // Проверка финального кода
+    function checkFinalCode() {
+        const input = document.getElementById('finalCodeInput');
+        const code = input.value.trim().toUpperCase();
+
+        if (code === SECRET_CODE.toUpperCase()) {
+            showScreen('screenWin');
+            tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg.HapticFeedback.notificationOccurred('error');
+            alert("Код неверный! Посмотри внимательно на свои ответы и попробуй ещё раз.");
+            input.value = "";
+        }
+    }
+</script>
+
+</body>
+</html>
