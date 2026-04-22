@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quest Bot Ultra</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #f0f2f5);
+            --text-color: var(--tg-theme-text-color, #222222);
+            --hint-color: var(--tg-theme-hint-color, #777777);
+            --primary-color: var(--tg-theme-button-color, #2481cc);
+            --primary-text-color: var(--tg-theme-button-text-color, #ffffff);
+            --sec-bg-color: var(--tg-theme-secondary-bg-color, #ffffff);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh;
+        }
+
+        .container { width: 90%; max-width: 400px; padding: 20px; text-align: center; }
+        .screen { display: none; width: 100%; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { font-size: 2rem; margin-bottom: 10px; color: var(--primary-color); }
+        .description { font-size: 1rem; color: var(--hint-color); margin-bottom: 25px; line-height: 1.4; }
+
+        .btn {
+            width: 100%; padding: 16px; background-color: var(--primary-color);
+            color: var(--primary-text-color); border: none; border-radius: 15px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10px;
+        }
+        .btn-gas { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+
+        /* Стили вопроса */
+        .q-card { background: var(--sec-bg-color); padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .q-number { font-size: 0.8rem; color: var(--hint-color); text-transform: uppercase; margin-bottom: 10px; }
+        .q-text { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; }
+
+        input {
+            width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 12px;
+            font-size: 1.1rem; outline: none; background-color: var(--sec-bg-color);
+            color: var(--text-color); box-sizing: border-box; text-align: center;
+        }
+        input:focus { border-color: var(--primary-color); }
+
+        /* Таблица результатов */
+        .results-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            margin: 20px 0; max-height: 300px; overflow-y: auto; padding: 5px;
+        }
+        .result-item {
+            background: var(--sec-bg-color); padding: 10px; border-radius: 10px;
+            font-size: 0.9rem; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        .res-num { color: var(--hint-color); width: 25px; font-weight: bold; text-align: left; }
+        .res-val { font-weight: 600; color: var(--primary-color); overflow: hidden; text-overflow: ellipsis; }
+
+        .final-box { background: #fff; padding: 20px; border-radius: 20px; border: 2px dashed var(--primary-color); margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div id="screenStart" class="screen active">
+        <h1>Йо! 👋</h1>
+        <div class="description">Это секретный квест. Ответь на 16 вопросов и в конце собери код из первых букв своих ответов!</div>
+        <button class="btn btn-gas" onclick="showScreen('screenInstruct')">ЛЕТС ГО, ГАЗЗЗ!</button>
+    </div>
+
+    <div id="screenInstruct" class="screen">
+        <h1>Как играть? 📝</h1>
+        <div class="description">
+            1. Отвечай на вопросы (любым словом).<br>
+            2. В конце ты увидишь список своих ответов.<br>
+            3. <b>Возьми первую букву</b> каждого ответа и введи их в итоговое поле!
+        </div>
+        <button class="btn" onclick="startQuest()">Я всё поняла, погнали!</button>
+    </div>
+
+    <div id="screenQuest" class="screen">
+        <div class="q-card">
+            <div class="q-number" id="qNumber">Вопрос 1 из 16</div>
+            <div class="q-text" id="qText">Загрузка...</div>
+            <input type="text" id="answerInput" placeholder="Твой ответ..." autocomplete="off">
+        </div>
+        <button class="btn" onclick="handleAnswer()">Далее</button>
+    </div>
+
+    <div id="screenFinal" class="screen">
+        <h1>Финиш! 🏆</h1>
+        <div class="description">Твои ответы ниже. Собери из их первых символов код в формате <b>XXXX-XXXX-XXXX-XXXX</b></div>
+        
+        <div class="results-grid" id="resultsGrid"></div>
+
+        <div class="final-box">
+            <div style="margin-bottom:10px; font-weight:bold;">ВВОДИ КОД ТУТ:</div>
+            <input type="text" id="finalCodeInput" placeholder="____-____-____-____" maxlength="19" style="letter-spacing: 2px; font-family: monospace; font-size: 1.2rem;">
+            <button class="btn" onclick="checkFinalCode()" style="margin-top:15px;">ПРОВЕРИТЬ КОД</button>
+        </div>
+    </div>
+
+    <div id="screenWin" class="screen">
+        <div style="font-size: 5rem; margin: 20px 0;">👑</div>
+        <h1>ТЫ ЭТО СДЕЛАЛА!</h1>
+        <div class="description">Код подтвержден. Ты настоящая легенда квестов!</div>
+        <button class="btn" onclick="tg.close()">Уйти красиво</button>
+    </div>
+
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+
+    // --- НАСТРОЙКИ (МЕНЯЙ ТУТ) ---
+    const SECRET_CODE = "1А4ПС2ОМРТН5ЕК8М"; // Твой итоговый код (16 знаков без тире)
+    const QUESTIONS = [
+        { q: "С какого числа начинается месяц?", a: "1" },
+        { q: "Первая буква алфавита?", a: "А" },
+        { q: "2 + 2 = ?", a: "4" },
+        { q: "Любимое слово космонавта?", a: "Поехали" },
+        { q: "Столица России?", a: "Москва" },
+        // Добавь еще 11 штук ниже...
+        { q: "Вопрос 6", a: "" }, { q: "Вопрос 7", a: "" }, { q: "Вопрос 8", a: "" },
+        { q: "Вопрос 9", a: "" }, { q: "Вопрос 10", a: "" }, { q: "Вопрос 11", a: "" },
+        { q: "Вопрос 12", a: "" }, { q: "Вопрос 13", a: "" }, { q: "Вопрос 14", a: "" },
+        { q: "Вопрос 15", a: "" }, { q: "Вопрос 16", a: "" }
+    ];
+
+    let currentStep = 0;
+    let userAnswers = [];
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    function startQuest() {
+        currentStep = 0;
+        userAnswers = [];
+        showScreen('screenQuest');
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        if (currentStep < QUESTIONS.length) {
+            document.getElementById('qNumber').innerText = `Вопрос ${currentStep + 1} из ${QUESTIONS.length}`;
+            document.getElementById('qText').innerText = QUESTIONS[currentStep].q;
+            document.getElementById('answerInput').value = "";
+            document.getElementById('answerInput').focus();
+        } else {
+            showFinal();
+        }
+    }
+
+    function handleAnswer() {
+        const val = document.getElementById('answerInput').value.trim();
+        if(!val) return tg.HapticFeedback.notificationOccurred('warning');
+        
+        userAnswers.push(val);
+        currentStep++;
+        tg.HapticFeedback.impactOccurred('light');
+        renderQuestion();
+    }
+
+    function showFinal() {
+        showScreen('screenFinal');
+        const grid = document.getElementById('resultsGrid');
+        grid.innerHTML = userAnswers.map((ans, i) => `
+            <div class="result-item">
+                <span class="res-num">${i+1}.</span>
+                <span class="res-val">${ans}</span>
+            </div>
+        `).join('');
+    }
+
+    // Авто-тире для кода XXXX-XXXX-XXXX-XXXX
+    document.getElementById('finalCodeInput').addEventListener('input', function (e) {
+        let val = e.target.value.replace(/[^a-zA-Zа-яА-Я0-9]/g, '').toUpperCase();
+        let formatted = "";
+        for (let i = 0; i < val.length && i < 16; i++) {
+            if (i > 0 && i % 4 === 0) formatted += "-";
+            formatted += val[i];
+        }
+        e.target.value = formatted;
+    });
+
+    function checkFinalCode() {
+        const rawInput = document.getElementById('finalCodeInput').value.replace(/-/g, '');
+        if (rawInput === SECRET_CODE.toUpperCase()) {
+            showScreen('screenWin');
+            tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg.HapticFeedback.notificationOccurred('error');
+            alert("Упс! Код не совпадает. Проверь первые буквы своих ответов еще раз!");
+        }
+    }
+</script>
+
+</body>
+</html>
