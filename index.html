@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quest Bot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); text-align: center; padding: 20px; margin: 0; }
+        .code-display { font-family: monospace; font-size: 1.8rem; background: var(--tg-theme-secondary-bg-color, #f0f0f0); padding: 15px; border-radius: 12px; margin: 20px 0; letter-spacing: 2px; }
+        .question-box { font-size: 1.2rem; margin-bottom: 20px; min-height: 60px; }
+        input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 1rem; margin-bottom: 15px; outline: none; }
+        button { width: 90%; padding: 12px; background-color: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #ffffff); border: none; border-radius: 10px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="code-display" id="codeDisplay">****-****-****-****</div>
+    <div class="question-box" id="questionText">Загрузка...</div>
+    
+    <input type="text" id="answerInput" placeholder="Введите ответ...">
+    <button onclick="handleAnswer()">Проверить</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // --- НАСТРОЙКИ ТУТ ---
+        const SECRET_CODE = "1A23456789012345"; // Ровно 16 символов БЕЗ тире
+        const QUESTIONS = [
+            { q: "С какого числа начинается каждый месяц?", a: "1" },
+            { q: "С какой буквы начинается алфавит?", a: "А" },
+            { q: "2 + 2 = ?", a: "4" },
+            // ... добавьте свои вопросы ниже по такому же образцу
+        ];
+        // ---------------------
+
+        let currentStep = 0;
+
+        function renderCode() {
+            let result = "";
+            for (let i = 0; i < 16; i++) {
+                if (i < currentStep) result += SECRET_CODE[i];
+                else result += "*";
+                if ((i + 1) % 4 === 0 && i < 15) result += "-";
+            }
+            document.getElementById('codeDisplay').innerText = result;
+        }
+
+        function renderQuestion() {
+            if (currentStep < QUESTIONS.length) {
+                document.getElementById('questionText').innerText = QUESTIONS[currentStep].q;
+            } else {
+                document.getElementById('questionText').innerText = "Квест пройден! Ваш код выше.";
+                document.getElementById('answerInput').style.display = "none";
+                document.querySelector('button').style.display = "none";
+            }
+        }
+
+        function handleAnswer() {
+            const input = document.getElementById('answerInput');
+            const userAnswer = input.value.trim().toLowerCase();
+            const correctAnswer = QUESTIONS[currentStep].a.toLowerCase();
+
+            if (userAnswer === correctAnswer) {
+                currentStep++;
+                input.value = "";
+                renderCode();
+                renderQuestion();
+                tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                tg.HapticFeedback.notificationOccurred('error');
+                alert("Неверно, попробуй еще раз!");
+            }
+        }
+
+        renderCode();
+        renderQuestion();
+    </script>
+</body>
+</html>
